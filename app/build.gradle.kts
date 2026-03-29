@@ -12,7 +12,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.1.2"
+        versionName = "1.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -57,4 +57,22 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// Tarea para sincronizar el versionName con el archivo version.txt en la raíz
+tasks.register("syncVersionFile") {
+    group = "versioning"
+    description = "Copia el versionName actual al archivo version.txt de la raíz."
+    
+    doLast {
+        val versionFile = file("${project.rootDir}/version.txt")
+        val currentVersion = android.defaultConfig.versionName ?: "1.0.0"
+        versionFile.writeText(currentVersion)
+        println("Archivo version.txt actualizado a v$currentVersion")
+    }
+}
+
+// Hacer que se ejecute automáticamente antes de construir
+tasks.named("preBuild") {
+    dependsOn("syncVersionFile")
 }

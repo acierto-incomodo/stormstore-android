@@ -419,7 +419,7 @@ fun UpdatesScreen(context: Context, latestVersionFound: String, onCheckUpdate: (
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Versión instalada:", fontWeight = FontWeight.Bold)
-                        Text(currentVersion ?: "1.0.0")
+                        Text("v${currentVersion ?: "1.0.0"}")
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
