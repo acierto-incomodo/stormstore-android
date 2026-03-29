@@ -104,6 +104,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -124,7 +125,15 @@ class MainActivity : ComponentActivity() {
                 
                 LaunchedEffect(updateUrl) {
                     if (updateUrl != null) {
-                        showUpdateDialog = true
+                        // Solo mostrar diálogo si la versión encontrada es distinta a la actual
+                        val currentVersion = try {
+                            packageManager.getPackageInfo(packageName, 0).versionName
+                                ?.lowercase()?.removePrefix("v")?.trim() ?: ""
+                        } catch (e: Exception) { "" }
+
+                        if (newVersionName != currentVersion) {
+                            showUpdateDialog = true
+                        }
                     }
                 }
 
@@ -148,7 +157,7 @@ class MainActivity : ComponentActivity() {
                                     1 -> DownloadsScreen(this@MainActivity)
                                     2 -> UpdatesScreen(
                                         context = this@MainActivity,
-                                        latestVersion = newVersionName,
+                                        latestVersionFound = newVersionName,
                                         onCheckUpdate = {
                                             checkUpdate(this@MainActivity) { url, version ->
                                                 updateUrl = url
@@ -308,7 +317,7 @@ fun ApkItem(file: File, onInstall: () -> Unit, onDelete: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${String.format("%.2f", file.length() / (1024f * 1024f))} MB",
+                    text = String.format(Locale.getDefault(), "%.2f MB", file.length() / (1024f * 1024f)),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -348,7 +357,7 @@ fun installApk(context: Context, file: File) {
 }
 
 @Composable
-fun UpdatesScreen(context: Context, latestVersion: String, onCheckUpdate: () -> Unit) {
+fun UpdatesScreen(context: Context, latestVersionFound: String, onCheckUpdate: () -> Unit) {
     val currentVersion = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -394,7 +403,7 @@ fun UpdatesScreen(context: Context, latestVersion: String, onCheckUpdate: () -> 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Última disponible:", fontWeight = FontWeight.Bold)
-                        Text(if (latestVersion.isEmpty()) "Desconocida" else "v$latestVersion")
+                        Text(if (latestVersionFound.isEmpty()) "Desconocida" else "v$latestVersionFound")
                     }
                 }
             }
@@ -466,14 +475,6 @@ fun AboutScreen() {
                 text = "StormGamesStudios",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = "© 2024 Todos los derechos reservados.",
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
             )
         }
     }
@@ -745,7 +746,7 @@ fun descargarAPK(context: Context, url: String) {
     dm.enqueue(request)
 }
 
-fun checkUpdate(context: Context, onUpdateAvailable: (url: String, version: String) -> Unit) {
+fun checkUpdate(context: Context, onUpdateAvailable: (url: String?, version: String) -> Unit) {
     Thread {
         try {
             val url = URL("https://api.github.com/repos/acierto-incomodo/stormstore-android/releases/latest")
@@ -758,22 +759,12 @@ fun checkUpdate(context: Context, onUpdateAvailable: (url: String, version: Stri
             val latestTag = json.getString("tag_name")
             val latestVersion = latestTag.lowercase().removePrefix("v").trim()
 
-            val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(context.packageName, 0)
-            }
+            val assets = json.getJSONArray("assets")
+            val apkUrl = if (assets.length() > 0) assets.getJSONObject(0).getString("browser_download_url") else null
             
-            val currentVersion = pInfo.versionName?.lowercase()?.removePrefix("v")?.trim() ?: ""
+            // Siempre llamamos al callback con la versión encontrada
+            onUpdateAvailable(apkUrl, latestVersion)
 
-            if (latestVersion.isNotEmpty() && latestVersion != currentVersion) {
-                val assets = json.getJSONArray("assets")
-                if (assets.length() > 0) {
-                    val apkUrl = assets.getJSONObject(0).getString("browser_download_url")
-                    onUpdateAvailable(apkUrl, latestVersion)
-                }
-            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
