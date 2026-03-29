@@ -50,13 +50,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -64,6 +68,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -87,13 +92,16 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.stormgamesstudios.stormstore.ui.theme.StormStoreTheme
 
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -112,7 +120,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             StormStoreTheme {
                 var showUpdateDialog by remember { mutableStateOf(false) }
-                var currentTab by remember { mutableStateOf(0) } // 0: Tienda, 1: Actualizar, 2: Info
+                var currentTab by remember { mutableStateOf(0) } // 0: Tienda, 1: Descargas, 2: Actualizar, 3: Info
                 
                 LaunchedEffect(updateUrl) {
                     if (updateUrl != null) {
@@ -124,15 +132,7 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         MainBottomBar(
                             selectedItem = currentTab,
-                            onItemSelected = { currentTab = it },
-                            onOpenDownloads = {
-                                val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
-                                try {
-                                    startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(this, "No se pudo abrir descargas", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                            onItemSelected = { currentTab = it }
                         )
                     }
                 ) { paddingValues ->
@@ -145,7 +145,8 @@ class MainActivity : ComponentActivity() {
                             Box {
                                 when (currentTab) {
                                     0 -> WebViewScreen(this@MainActivity)
-                                    1 -> UpdatesScreen(
+                                    1 -> DownloadsScreen(this@MainActivity)
+                                    2 -> UpdatesScreen(
                                         context = this@MainActivity,
                                         latestVersion = newVersionName,
                                         onCheckUpdate = {
@@ -155,7 +156,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     )
-                                    2 -> AboutScreen()
+                                    3 -> AboutScreen()
                                 }
                                 
                                 if (showUpdateDialog && updateUrl != null) {
@@ -176,7 +177,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Búsqueda inicial silenciosa
         checkUpdate(this) { url, version ->
             updateUrl = url
             newVersionName = version
@@ -186,23 +186,7 @@ class MainActivity : ComponentActivity() {
     private fun setupDownloadReceiver() {
         downloadReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1) ?: -1
-                if (id != -1L) {
-                    val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                    val uri = dm.getUriForDownloadedFile(id)
-                    if (uri != null) {
-                        val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(uri, "application/vnd.android.package-archive")
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        try {
-                            startActivity(installIntent)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
+                Toast.makeText(context, "Descarga finalizada", Toast.LENGTH_SHORT).show()
             }
         }
         
@@ -228,7 +212,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit, onOpenDownloads: () -> Unit) {
+fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit) {
     NavigationBar {
         NavigationBarItem(
             icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Tienda") },
@@ -239,21 +223,127 @@ fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit, onOpenDownlo
         NavigationBarItem(
             icon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Descargas") },
             label = { Text("Descargas") },
-            selected = false,
-            onClick = onOpenDownloads
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Refresh, contentDescription = "Actualizar") },
-            label = { Text("Actualizar") },
             selected = selectedItem == 1,
             onClick = { onItemSelected(1) }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Info, contentDescription = "Info") },
-            label = { Text("Info") },
+            icon = { Icon(Icons.Default.Refresh, contentDescription = "Actualizar") },
+            label = { Text("Actualizar") },
             selected = selectedItem == 2,
             onClick = { onItemSelected(2) }
         )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Info, contentDescription = "Info") },
+            label = { Text("Info") },
+            selected = selectedItem == 3,
+            onClick = { onItemSelected(3) }
+        )
+    }
+}
+
+@Composable
+fun DownloadsScreen(context: Context) {
+    var downloadedFiles by remember { 
+        mutableStateOf(getDownloadedApks(context)) 
+    }
+
+    LaunchedEffect(Unit) {
+        while(true) {
+            downloadedFiles = getDownloadedApks(context)
+            kotlinx.coroutines.delay(2000)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Mis Descargas",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (downloadedFiles.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "No hay APKs descargados", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(downloadedFiles) { file ->
+                    ApkItem(
+                        file = file,
+                        onInstall = { installApk(context, file) },
+                        onDelete = {
+                            file.delete()
+                            downloadedFiles = getDownloadedApks(context)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ApkItem(file: File, onInstall: () -> Unit, onDelete: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${String.format("%.2f", file.length() / (1024f * 1024f))} MB",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Row {
+                IconButton(onClick = onInstall) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Instalar", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+fun getDownloadedApks(context: Context): List<File> {
+    val dir = context.getExternalFilesDir(null)
+    return dir?.listFiles { file -> file.extension == "apk" }?.toList() ?: emptyList()
+}
+
+fun installApk(context: Context, file: File) {
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/vnd.android.package-archive")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Error al instalar: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -315,7 +405,6 @@ fun UpdatesScreen(context: Context, latestVersion: String, onCheckUpdate: () -> 
                 onClick = {
                     isChecking = true
                     onCheckUpdate()
-                    // Simulamos espera para el feedback visual usando Handler
                     Handler(Looper.getMainLooper()).postDelayed({
                         isChecking = false
                     }, 2000)
@@ -374,7 +463,7 @@ fun AboutScreen() {
                 color = MaterialTheme.colorScheme.secondary
             )
             Text(
-                text = "Storm Games Studios",
+                text = "StormGamesStudios",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -639,10 +728,16 @@ fun ErrorScreen(onRetry: () -> Unit) {
 
 fun descargarAPK(context: Context, url: String) {
     val fileName = url.substringAfterLast("/")
+    val file = File(context.getExternalFilesDir(null), fileName)
+    
+    if (file.exists()) {
+        file.delete()
+    }
+
     val request = DownloadManager.Request(Uri.parse(url)).apply {
-        setTitle("Descargando StormStore")
-        setDescription("Descargando nueva versión del APK...")
-        setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+        setTitle("Descargando $fileName")
+        setDescription("Descargando en carpeta privada de StormStore")
+        setDestinationInExternalFilesDir(context, null, fileName)
         setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
     }
 
