@@ -378,23 +378,38 @@ fun checkUpdate(context: Context) {
         try {
             val url = URL("https://api.github.com/repos/acierto-incomodo/stormstore-android/releases/latest")
             val connection = url.openConnection() as HttpURLConnection
+            connection.setRequestProperty("User-Agent", "StormStore-App")
+            
             val data = connection.inputStream.bufferedReader().readText()
-
             val json = JSONObject(data)
+            
+            // Normalizar tag de GitHub (quitar 'v' inicial)
             val latestVersion = json.getString("tag_name")
+                .lowercase()
+                .removePrefix("v")
+                .trim()
 
-            val currentVersion = context.packageManager
-                .getPackageInfo(context.packageName, 0).versionName
-
-            if (latestVersion != currentVersion) {
-
-                val assets = json.getJSONArray("assets")
-                val apkUrl = assets.getJSONObject(0)
-                    .getString("browser_download_url")
-
-                descargarAPK(context, apkUrl)
+            // Obtener versión instalada de forma segura
+            val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
             }
+            
+            val currentVersion = pInfo.versionName
+                ?.lowercase()
+                ?.removePrefix("v")
+                ?.trim() ?: ""
 
+            // Si las versiones son distintas, procedemos a descargar
+            if (latestVersion.isNotEmpty() && latestVersion != currentVersion) {
+                val assets = json.getJSONArray("assets")
+                if (assets.length() > 0) {
+                    val apkUrl = assets.getJSONObject(0).getString("browser_download_url")
+                    descargarAPK(context, apkUrl)
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
