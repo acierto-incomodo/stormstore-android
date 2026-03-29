@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -110,7 +111,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var downloadReceiver: BroadcastReceiver
     private var updateUrl by mutableStateOf<String?>(null)
-    private var newVersionName by mutableStateOf("")
+    private var latestVersionName by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,13 +126,12 @@ class MainActivity : ComponentActivity() {
                 
                 LaunchedEffect(updateUrl) {
                     if (updateUrl != null) {
-                        // Solo mostrar diálogo si la versión encontrada es distinta a la actual
                         val currentVersion = try {
                             packageManager.getPackageInfo(packageName, 0).versionName
                                 ?.lowercase()?.removePrefix("v")?.trim() ?: ""
                         } catch (e: Exception) { "" }
 
-                        if (newVersionName != currentVersion) {
+                        if (latestVersionName != currentVersion) {
                             showUpdateDialog = true
                         }
                     }
@@ -157,11 +157,11 @@ class MainActivity : ComponentActivity() {
                                     1 -> DownloadsScreen(this@MainActivity)
                                     2 -> UpdatesScreen(
                                         context = this@MainActivity,
-                                        latestVersionFound = newVersionName,
+                                        latestVersionFound = latestVersionName,
                                         onCheckUpdate = {
                                             checkUpdate(this@MainActivity) { url, version ->
                                                 updateUrl = url
-                                                newVersionName = version
+                                                latestVersionName = version
                                             }
                                         }
                                     )
@@ -170,7 +170,7 @@ class MainActivity : ComponentActivity() {
                                 
                                 if (showUpdateDialog && updateUrl != null) {
                                     UpdateDialog(
-                                        version = newVersionName,
+                                        version = latestVersionName,
                                         onDismiss = { showUpdateDialog = false },
                                         onConfirm = {
                                             descargarAPK(this@MainActivity, updateUrl!!)
@@ -188,13 +188,34 @@ class MainActivity : ComponentActivity() {
 
         checkUpdate(this) { url, version ->
             updateUrl = url
-            newVersionName = version
+            latestVersionName = version
         }
     }
 
     private fun setupDownloadReceiver() {
         downloadReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1) ?: -1
+                if (id != -1L && context != null) {
+                    val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                    val query = DownloadManager.Query().setFilterById(id)
+                    val cursor = dm.query(query)
+                    
+                    if (cursor.moveToFirst()) {
+                        val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        if (cursor.getInt(statusIdx) == DownloadManager.STATUS_SUCCESSFUL) {
+                            val localUriIdx = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
+                            val uriString = cursor.getString(localUriIdx)
+                            if (uriString != null) {
+                                val file = File(Uri.parse(uriString).path ?: "")
+                                if (file.exists()) {
+                                    installApk(context, file)
+                                }
+                            }
+                        }
+                    }
+                    cursor.close()
+                }
                 Toast.makeText(context, "Descarga finalizada", Toast.LENGTH_SHORT).show()
             }
         }
@@ -230,7 +251,7 @@ fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit) {
             onClick = { onItemSelected(0) }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Descargas") },
+            icon = { Icon(Icons.Default.Archive, contentDescription = "Descargas") },
             label = { Text("Descargas") },
             selected = selectedItem == 1,
             onClick = { onItemSelected(1) }
@@ -339,17 +360,17 @@ fun getDownloadedApks(context: Context): List<File> {
 }
 
 fun installApk(context: Context, file: File) {
-    val uri = FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file
-    )
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, "application/vnd.android.package-archive")
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
     try {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
         context.startActivity(intent)
     } catch (e: Exception) {
         Toast.makeText(context, "Error al instalar: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -475,6 +496,14 @@ fun AboutScreen() {
                 text = "StormGamesStudios",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "© 2024 Todos los derechos reservados.",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
             )
         }
     }
