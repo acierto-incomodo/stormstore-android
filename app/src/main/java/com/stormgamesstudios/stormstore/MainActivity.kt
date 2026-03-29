@@ -12,6 +12,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -39,6 +41,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,14 +49,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -98,29 +111,63 @@ class MainActivity : ComponentActivity() {
         setContent {
             StormStoreTheme {
                 var showUpdateDialog by remember { mutableStateOf(false) }
+                var currentTab by remember { mutableStateOf(0) } // 0: Tienda, 1: Actualizar, 2: Info
                 
-                // Observar cambios en updateUrl para mostrar el diálogo
                 LaunchedEffect(updateUrl) {
                     if (updateUrl != null) {
                         showUpdateDialog = true
                     }
                 }
 
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    RequestPermissions {
-                        Box {
-                            WebViewScreen(this@MainActivity)
-                            
-                            if (showUpdateDialog && updateUrl != null) {
-                                UpdateDialog(
-                                    version = newVersionName,
-                                    onDismiss = { showUpdateDialog = false },
-                                    onConfirm = {
-                                        descargarAPK(this@MainActivity, updateUrl!!)
-                                        showUpdateDialog = false
-                                        Toast.makeText(this@MainActivity, "Iniciando descarga...", Toast.LENGTH_SHORT).show()
-                                    }
-                                )
+                Scaffold(
+                    bottomBar = {
+                        MainBottomBar(
+                            selectedItem = currentTab,
+                            onItemSelected = { currentTab = it },
+                            onOpenDownloads = {
+                                val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+                                try {
+                                    startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(this, "No se pudo abrir descargas", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                    }
+                ) { paddingValues ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    ) {
+                        RequestPermissions {
+                            Box {
+                                when (currentTab) {
+                                    0 -> WebViewScreen(this@MainActivity)
+                                    1 -> UpdatesScreen(
+                                        context = this@MainActivity,
+                                        latestVersion = newVersionName,
+                                        onCheckUpdate = {
+                                            checkUpdate(this@MainActivity) { url, version ->
+                                                updateUrl = url
+                                                newVersionName = version
+                                            }
+                                        }
+                                    )
+                                    2 -> AboutScreen()
+                                }
+                                
+                                if (showUpdateDialog && updateUrl != null) {
+                                    UpdateDialog(
+                                        version = newVersionName,
+                                        onDismiss = { showUpdateDialog = false },
+                                        onConfirm = {
+                                            descargarAPK(this@MainActivity, updateUrl!!)
+                                            showUpdateDialog = false
+                                            Toast.makeText(this@MainActivity, "Iniciando descarga...", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -128,6 +175,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Búsqueda inicial silenciosa
         checkUpdate(this) { url, version ->
             updateUrl = url
             newVersionName = version
@@ -174,6 +222,169 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         if (::downloadReceiver.isInitialized) {
             unregisterReceiver(downloadReceiver)
+        }
+    }
+}
+
+@Composable
+fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit, onOpenDownloads: () -> Unit) {
+    NavigationBar {
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Tienda") },
+            label = { Text("Tienda") },
+            selected = selectedItem == 0,
+            onClick = { onItemSelected(0) }
+        )
+        NavigationBarItem(
+            icon = { Icon(painterResource(id = android.R.drawable.stat_sys_download), contentDescription = "Descargas", modifier = Modifier.size(24.dp)) },
+            label = { Text("Descargas") },
+            selected = false,
+            onClick = onOpenDownloads
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Refresh, contentDescription = "Actualizar") },
+            label = { Text("Actualizar") },
+            selected = selectedItem == 1,
+            onClick = { onItemSelected(1) }
+        )
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Info, contentDescription = "Info") },
+            label = { Text("Info") },
+            selected = selectedItem == 2,
+            onClick = { onItemSelected(2) }
+        )
+    }
+}
+
+@Composable
+fun UpdatesScreen(context: Context, latestVersion: String, onCheckUpdate: () -> Unit) {
+    val currentVersion = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        } catch (e: Exception) { "Unknown" }
+    }
+    
+    var isChecking by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Centro de Actualización",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Versión instalada:", fontWeight = FontWeight.Bold)
+                        Text(currentVersion ?: "1.0.0")
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Última disponible:", fontWeight = FontWeight.Bold)
+                        Text(if (latestVersion.isEmpty()) "Desconocida" else "v$latestVersion")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            Button(
+                onClick = {
+                    isChecking = true
+                    onCheckUpdate()
+                    // Simulamos espera para el feedback visual usando Handler
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        isChecking = false
+                    }, 2000)
+                },
+                modifier = Modifier.height(52.dp).fillMaxWidth(),
+                enabled = !isChecking
+            ) {
+                if (isChecking) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Buscando...")
+                } else {
+                    Text("Buscar actualizaciones")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AboutScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "StormStore",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Tu tienda de juegos favorita",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(48.dp))
+            
+            Text(
+                text = "Desarrollado por:",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Text(
+                text = "Storm Games Studios",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "© 2024 Todos los derechos reservados.",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

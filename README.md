@@ -37,13 +37,5 @@ Para el correcto funcionamiento, la aplicación solicitará:
 - **Notificaciones**: Para informarte sobre el estado de tus descargas.
 - **Instalar aplicaciones desconocidas**: Necesario para poder instalar los APKs que descargues desde StormStore.
 
-## 🚀 Desarrollo
-
-Si deseas compilar el proyecto por tu cuenta:
-1. Clona el repositorio.
-2. Abre el proyecto en **Android Studio Jellyfish** o superior.
-3. Asegúrate de tener instalado el SDK de Android 34 (API Level 34).
-4. Sincroniza con Gradle y ejecuta.
-
 ---
-Desarrollado por **acierto-incomodo** para **Storm Games Studios**.
+Desarrollado por **Storm Games Studios**.
