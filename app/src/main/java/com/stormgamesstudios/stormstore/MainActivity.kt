@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
@@ -124,7 +125,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             StormStoreTheme {
                 var showUpdateDialog by remember { mutableStateOf(false) }
-                var currentTab by remember { mutableStateOf(0) } // 0: Tienda, 1: Descargas, 2: Actualizar, 3: Info
+                var currentTab by remember { mutableStateOf(0) }
                 
                 LaunchedEffect(updateUrl) {
                     if (updateUrl != null) {
@@ -175,7 +176,7 @@ class MainActivity : ComponentActivity() {
                                         version = latestVersionName,
                                         onDismiss = { showUpdateDialog = false },
                                         onConfirm = {
-                                            descargarAPK(this@MainActivity, updateUrl!!)
+                                            descargarAppYIcono(this@MainActivity, updateUrl!!, "")
                                             showUpdateDialog = false
                                             Toast.makeText(this@MainActivity, "Iniciando descarga...", Toast.LENGTH_SHORT).show()
                                         }
@@ -208,7 +209,7 @@ class MainActivity : ComponentActivity() {
                         if (cursor.getInt(statusIdx) == DownloadManager.STATUS_SUCCESSFUL) {
                             val localUriIdx = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
                             val uriString = cursor.getString(localUriIdx)
-                            if (uriString != null) {
+                            if (uriString != null && uriString.endsWith(".apk")) {
                                 val file = File(Uri.parse(uriString).path ?: "")
                                 if (file.exists()) {
                                     installApk(context, file)
@@ -218,7 +219,6 @@ class MainActivity : ComponentActivity() {
                     }
                     cursor.close()
                 }
-                Toast.makeText(context, "Descarga finalizada", Toast.LENGTH_SHORT).show()
             }
         }
         
@@ -314,7 +314,7 @@ fun StoreListScreen(context: Context) {
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(apps) { app ->
-                        StoreAppCard(app) { descargarAPK(context, app.downloadUrl) }
+                        StoreAppCard(app) { descargarAppYIcono(context, app.downloadUrl, app.imageUrl) }
                     }
                 }
             }
@@ -361,7 +361,21 @@ fun DownloadsScreen(context: Context) {
     }
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(16.dp)) {
-        Text(text = "Mis Descargas", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Mis Descargas", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            if (downloadedFiles.isNotEmpty()) {
+                IconButton(onClick = {
+                    val dir = context.getExternalFilesDir(null)
+                    dir?.listFiles()?.forEach { it.delete() }
+                    downloadedFiles = emptyList()
+                    Toast.makeText(context, "Todas las descargas eliminadas", Toast.LENGTH_SHORT).show()
+                }) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = "Eliminar todo", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (downloadedFiles.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -370,7 +384,12 @@ fun DownloadsScreen(context: Context) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(downloadedFiles) { file ->
-                    ApkItem(file = file, onInstall = { installApk(context, file) }, onDelete = { file.delete(); downloadedFiles = getDownloadedApks(context) })
+                    ApkItem(file = file, onInstall = { installApk(context, file) }, onDelete = { 
+                        file.delete()
+                        val iconFile = File(file.absolutePath.replace(".apk", ".png"))
+                        if (iconFile.exists()) iconFile.delete()
+                        downloadedFiles = getDownloadedApks(context) 
+                    })
                 }
             }
         }
@@ -379,8 +398,25 @@ fun DownloadsScreen(context: Context) {
 
 @Composable
 fun ApkItem(file: File, onInstall: () -> Unit, onDelete: () -> Unit) {
+    val iconFile = File(file.absolutePath.replace(".apk", ".png"))
+    
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (iconFile.exists()) {
+                AsyncImage(
+                    model = iconFile,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = file.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(text = String.format(Locale.getDefault(), "%.2f MB", file.length() / (1024f * 1024f)), style = MaterialTheme.typography.bodySmall)
@@ -423,7 +459,7 @@ fun UpdatesScreen(context: Context, latestVersionFound: String, onCheckUpdate: (
             Spacer(modifier = Modifier.height(24.dp))
             Text(text = "Centro de Actualización", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
             Spacer(modifier = Modifier.height(32.dp))
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant) ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Versión instalada:", fontWeight = FontWeight.Bold)
@@ -461,8 +497,6 @@ fun AboutScreen() {
             Spacer(modifier = Modifier.height(48.dp))
             Text(text = "Desarrollado por:", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
             Text(text = "StormGamesStudios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(text = "© 2024 Todos los derechos reservados.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
 }
@@ -495,13 +529,34 @@ fun ErrorScreen(onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { Icon(imageVector = Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.error); Spacer(modifier = Modifier.height(24.dp)); Text(text = "Sin conexión", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground); Spacer(modifier = Modifier.height(12.dp)); Text(text = "No se pudo conectar con la tienda. Revisa tu conexión a internet e inténtalo de nuevo.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center); Spacer(modifier = Modifier.height(40.dp)); Button(onClick = onRetry, modifier = Modifier.height(52.dp)) { Text("Reintentar", modifier = Modifier.padding(horizontal = 16.dp)) } } }
 }
 
-fun descargarAPK(context: Context, url: String) {
-    val fileName = url.substringAfterLast("/")
+fun descargarAppYIcono(context: Context, apkUrl: String, imageUrl: String) {
+    val fileName = apkUrl.substringAfterLast("/")
     val file = File(context.getExternalFilesDir(null), fileName)
-    if (file.exists()) { file.delete() }
-    val request = DownloadManager.Request(Uri.parse(url)).apply { setTitle("Descargando $fileName"); setDescription("Descargando en carpeta privada de StormStore"); setDestinationInExternalFilesDir(context, null, fileName); setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED) }
+    if (file.exists()) file.delete()
+
     val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    dm.enqueue(request)
+
+    // Descargar APK
+    val apkRequest = DownloadManager.Request(Uri.parse(apkUrl)).apply {
+        setTitle("Descargando $fileName")
+        setDestinationInExternalFilesDir(context, null, fileName)
+        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+    }
+    dm.enqueue(apkRequest)
+
+    // Descargar Icono si existe la URL
+    if (imageUrl.isNotEmpty()) {
+        val iconName = fileName.replace(".apk", ".png")
+        val iconFile = File(context.getExternalFilesDir(null), iconName)
+        if (iconFile.exists()) iconFile.delete()
+
+        val iconRequest = DownloadManager.Request(Uri.parse(imageUrl)).apply {
+            setTitle("Descargando icono de $fileName")
+            setDestinationInExternalFilesDir(context, null, iconName)
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
+        }
+        dm.enqueue(iconRequest)
+    }
 }
 
 fun checkUpdate(context: Context, onUpdateAvailable: (url: String?, version: String) -> Unit) {
