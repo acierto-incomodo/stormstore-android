@@ -12,5 +12,12 @@
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.apk",
     "version": "2.3"
+  },
+  {
+    "name": "GeoDash",
+    "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
+    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.png",
+    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.apk",
+    "version": "1.0.0"
   }
 ]
