@@ -38,4 +38,5 @@ Para el correcto funcionamiento, la aplicación solicitará:
 - **Instalar aplicaciones desconocidas**: Necesario para poder instalar los APKs que descargues desde StormStore.
 
 ---
+
 Desarrollado por **Storm Games Studios**.

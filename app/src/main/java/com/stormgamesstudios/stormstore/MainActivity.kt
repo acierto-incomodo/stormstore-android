@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -236,7 +237,7 @@ fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit, onOpenDownlo
             onClick = { onItemSelected(0) }
         )
         NavigationBarItem(
-            icon = { Icon(painterResource(id = android.R.drawable.stat_sys_download), contentDescription = "Descargas", modifier = Modifier.size(24.dp)) },
+            icon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Descargas") },
             label = { Text("Descargas") },
             selected = false,
             onClick = onOpenDownloads
