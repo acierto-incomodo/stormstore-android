@@ -17,6 +17,7 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,18 +41,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,6 +71,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -80,6 +86,8 @@ import java.net.URL
 class MainActivity : ComponentActivity() {
 
     private lateinit var downloadReceiver: BroadcastReceiver
+    private var updateUrl by mutableStateOf<String?>(null)
+    private var newVersionName by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,15 +97,41 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StormStoreTheme {
+                var showUpdateDialog by remember { mutableStateOf(false) }
+                
+                // Observar cambios en updateUrl para mostrar el diálogo
+                LaunchedEffect(updateUrl) {
+                    if (updateUrl != null) {
+                        showUpdateDialog = true
+                    }
+                }
+
                 Surface(modifier = Modifier.fillMaxSize()) {
                     RequestPermissions {
-                        WebViewScreen(this@MainActivity)
+                        Box {
+                            WebViewScreen(this@MainActivity)
+                            
+                            if (showUpdateDialog && updateUrl != null) {
+                                UpdateDialog(
+                                    version = newVersionName,
+                                    onDismiss = { showUpdateDialog = false },
+                                    onConfirm = {
+                                        descargarAPK(this@MainActivity, updateUrl!!)
+                                        showUpdateDialog = false
+                                        Toast.makeText(this@MainActivity, "Iniciando descarga...", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        checkUpdate(this)
+        checkUpdate(this) { url, version ->
+            updateUrl = url
+            newVersionName = version
+        }
     }
 
     private fun setupDownloadReceiver() {
@@ -142,6 +176,37 @@ class MainActivity : ComponentActivity() {
             unregisterReceiver(downloadReceiver)
         }
     }
+}
+
+@Composable
+fun UpdateDialog(version: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text(text = "Actualización disponible") },
+        text = {
+            Column {
+                Text(text = "Se ha encontrado una nueva versión: ", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "v$version", 
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "¿Deseas descargarla e instalarla ahora?")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Actualizar ahora")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Más tarde")
+            }
+        }
+    )
 }
 
 @Composable
@@ -373,7 +438,7 @@ fun descargarAPK(context: Context, url: String) {
     dm.enqueue(request)
 }
 
-fun checkUpdate(context: Context) {
+fun checkUpdate(context: Context, onUpdateAvailable: (url: String, version: String) -> Unit) {
     Thread {
         try {
             val url = URL("https://api.github.com/repos/acierto-incomodo/stormstore-android/releases/latest")
@@ -383,13 +448,9 @@ fun checkUpdate(context: Context) {
             val data = connection.inputStream.bufferedReader().readText()
             val json = JSONObject(data)
             
-            // Normalizar tag de GitHub (quitar 'v' inicial)
-            val latestVersion = json.getString("tag_name")
-                .lowercase()
-                .removePrefix("v")
-                .trim()
+            val latestTag = json.getString("tag_name")
+            val latestVersion = latestTag.lowercase().removePrefix("v").trim()
 
-            // Obtener versión instalada de forma segura
             val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
             } else {
@@ -397,17 +458,13 @@ fun checkUpdate(context: Context) {
                 context.packageManager.getPackageInfo(context.packageName, 0)
             }
             
-            val currentVersion = pInfo.versionName
-                ?.lowercase()
-                ?.removePrefix("v")
-                ?.trim() ?: ""
+            val currentVersion = pInfo.versionName?.lowercase()?.removePrefix("v")?.trim() ?: ""
 
-            // Si las versiones son distintas, procedemos a descargar
             if (latestVersion.isNotEmpty() && latestVersion != currentVersion) {
                 val assets = json.getJSONArray("assets")
                 if (assets.length() > 0) {
                     val apkUrl = assets.getJSONObject(0).getString("browser_download_url")
-                    descargarAPK(context, apkUrl)
+                    onUpdateAvailable(apkUrl, latestVersion)
                 }
             }
         } catch (e: Exception) {
