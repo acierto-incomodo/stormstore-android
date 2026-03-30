@@ -19,5 +19,12 @@
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.apk",
     "version": "1.0.0"
+  },
+  {
+    "name": "CardinalAI DualModel APP",
+    "description": "CardinalAI DualModel APP es una aplicación de inteligencia artificial nuestra en la palma de tu mano.",
+    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-DualModel-APP.png",
+    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-DualModel-APP.apk",
+    "version": "1.1.0"
   }
 ]
