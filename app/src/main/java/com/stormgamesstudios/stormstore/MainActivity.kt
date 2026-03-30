@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                     val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                     val query = DownloadManager.Query().setFilterById(id)
                     val cursor = dm.query(query)
-                    
+
                     if (cursor.moveToFirst()) {
                         val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                         if (cursor.getInt(statusIdx) == DownloadManager.STATUS_SUCCESSFUL) {
@@ -225,14 +225,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        
+
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(downloadReceiver, filter)
-        }
+        // Usamos ContextCompat para registrar el receiver con la flag obligatoria en Android 14+
+        ContextCompat.registerReceiver(
+            this,
+            downloadReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
     }
 
     override fun onDestroy() {
