@@ -4,20 +4,31 @@
     "description": "StormStore, tu tienda de juegos favorita.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/stormstore-android/main/stormstore.png",
     "downloadUrl": "https://github.com/acierto-incomodo/stormstore-android/releases/latest/download/StormStore.apk",
-    "version": "2.0.0"
+    "version": "2.0.0",
+    "secret": "no"
   },
   {
     "name": "Salto Perfecto",
     "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.apk",
-    "version": "2.3"
+    "version": "2.3",
+    "secret": "no"
+  },
+  {
+    "name": "GeoDash",
+    "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
+    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.png",
+    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.apk",
+    "version": "1.0.0",
+    "secret": "yes"
   },
   {
     "name": "CardinalAI DualModel APP",
     "description": "CardinalAI DualModel APP es una aplicación de inteligencia artificial nuestra en la palma de tu mano.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-DualModel-APP.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-DualModel-APP.apk",
-    "version": "1.1.0"
+    "version": "1.1.0",
+    "secret": "no"
   }
 ]
