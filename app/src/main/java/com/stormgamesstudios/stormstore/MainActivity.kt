@@ -49,10 +49,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -69,6 +71,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -104,6 +107,7 @@ import java.util.Locale
 
 data class StoreApp(
     val name: String,
+    val packageName: String,
     val description: String,
     val imageUrl: String,
     val downloadUrl: String,
@@ -226,7 +230,8 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED)
         } else {
-            ContextCompat.registerReceiver(this, downloadReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
+            @Suppress("DEPRECATION")
+            registerReceiver(downloadReceiver, filter)
         }
     }
 
@@ -271,8 +276,13 @@ fun MainBottomBar(selectedItem: Int, onItemSelected: (Int) -> Unit) {
 @Composable
 fun StoreListScreen(context: Context) {
     var apps by remember { mutableStateOf<List<StoreApp>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
     var screenState by remember { mutableStateOf(ScreenState.Loading) }
     var refreshTrigger by remember { mutableStateOf(0) }
+
+    val filteredApps = remember(apps, searchQuery) {
+        apps.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
 
     LaunchedEffect(refreshTrigger) {
         screenState = ScreenState.Loading
@@ -290,6 +300,7 @@ fun StoreListScreen(context: Context) {
                     val obj = jsonArray.getJSONObject(i)
                     appList.add(StoreApp(
                         name = obj.getString("name"),
+                        packageName = obj.optString("packageName", ""),
                         description = obj.getString("description"),
                         imageUrl = obj.getString("imageUrl"),
                         downloadUrl = obj.getString("downloadUrl"),
@@ -310,11 +321,49 @@ fun StoreListScreen(context: Context) {
         ScreenState.Error -> ErrorScreen(onRetry = { refreshTrigger++ })
         ScreenState.Content -> {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text(text = "Tienda", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Tienda", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { refreshTrigger++ }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Recargar")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Buscar aplicaciones...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(apps) { app ->
-                        StoreAppCard(app) { descargarAppYIcono(context, app.downloadUrl, app.imageUrl) }
+
+                if (filteredApps.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = "No se encontraron aplicaciones", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        items(filteredApps) { app ->
+                            StoreAppCard(app) { 
+                                if (isAppInstalledAndUpToDate(context, app.packageName, app.version)) {
+                                    launchApp(context, app.packageName)
+                                } else {
+                                    descargarAppYIcono(context, app.downloadUrl, app.imageUrl)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -322,8 +371,32 @@ fun StoreListScreen(context: Context) {
     }
 }
 
+fun isAppInstalledAndUpToDate(context: Context, packageName: String, version: String): Boolean {
+    if (packageName.isEmpty()) return false
+    return try {
+        val pInfo = context.packageManager.getPackageInfo(packageName, 0)
+        val installedVersion = pInfo.versionName?.lowercase()?.removePrefix("v")?.trim() ?: ""
+        val targetVersion = version.lowercase().removePrefix("v").trim()
+        installedVersion == targetVersion
+    } catch (e: Exception) {
+        false
+    }
+}
+
+fun launchApp(context: Context, packageName: String) {
+    val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+    if (intent != null) {
+        context.startActivity(intent)
+    } else {
+        Toast.makeText(context, "No se pudo abrir la aplicación", Toast.LENGTH_SHORT).show()
+    }
+}
+
 @Composable
-fun StoreAppCard(app: StoreApp, onDownload: () -> Unit) {
+fun StoreAppCard(app: StoreApp, onAction: () -> Unit) {
+    val context = LocalContext.current
+    val isUpToDate = isAppInstalledAndUpToDate(context, app.packageName, app.version)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -342,8 +415,12 @@ fun StoreAppCard(app: StoreApp, onDownload: () -> Unit) {
                 Text(text = "v${app.version}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 Text(text = app.description, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            IconButton(onClick = onDownload) {
-                Icon(Icons.Default.Download, contentDescription = "Descargar", tint = MaterialTheme.colorScheme.primary)
+            IconButton(onClick = onAction) {
+                Icon(
+                    imageVector = if (isUpToDate) Icons.Default.PlayArrow else Icons.Default.Download,
+                    contentDescription = if (isUpToDate) "Abrir" else "Descargar",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -536,7 +613,6 @@ fun descargarAppYIcono(context: Context, apkUrl: String, imageUrl: String) {
 
     val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-    // Descargar APK
     val apkRequest = DownloadManager.Request(Uri.parse(apkUrl)).apply {
         setTitle("Descargando $fileName")
         setDestinationInExternalFilesDir(context, null, fileName)
@@ -544,16 +620,15 @@ fun descargarAppYIcono(context: Context, apkUrl: String, imageUrl: String) {
     }
     dm.enqueue(apkRequest)
 
-    // Descargar Icono si existe la URL
     if (imageUrl.isNotEmpty()) {
         val iconName = fileName.replace(".apk", ".png")
         val iconFile = File(context.getExternalFilesDir(null), iconName)
         if (iconFile.exists()) iconFile.delete()
 
         val iconRequest = DownloadManager.Request(Uri.parse(imageUrl)).apply {
-            setTitle("Descargando icono de $fileName")
+            setTitle("Icono de $fileName")
             setDestinationInExternalFilesDir(context, null, iconName)
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
         }
         dm.enqueue(iconRequest)
     }

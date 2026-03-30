@@ -1,6 +1,7 @@
 [
   {
     "name": "StormStore",
+    "packageName": "com.stormgamesstudios.stormstore",
     "description": "StormStore, tu tienda de juegos favorita.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/stormstore-android/main/stormstore.png",
     "downloadUrl": "https://github.com/acierto-incomodo/stormstore-android/releases/latest/download/StormStore.apk",
@@ -9,6 +10,7 @@
   },
   {
     "name": "Salto Perfecto",
+    "packageName": "com.stormgamesstudios.saltoperfecto",
     "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.apk",
@@ -16,19 +18,21 @@
     "hiden": "no"
   },
   {
-    "name": "GeoDash",
-    "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
-    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.png",
-    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.apk",
-    "version": "1.0.0",
-    "hiden": "yes"
-  },
-  {
     "name": "CardinalAI MultiModel App",
+    "packageName": "com.stormgamesstudios.cardinalaidualmodel",
     "description": "CardinalAI MultiModel App es una aplicación de inteligencia artificial nuestra en la palma de tu mano.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-MultiModel-App.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-MultiModel-App.apk",
     "version": "1.1.0",
     "hiden": "no"
+  },
+  {
+    "name": "GeoDash",
+    "packageName": "com.example.geodash",
+    "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
+    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.png",
+    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.apk",
+    "version": "1.0.0",
+    "hiden": "yes"
   }
 ]

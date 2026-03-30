@@ -1,6 +1,7 @@
 [
   {
     "name": "StormStore",
+    "packageName": "com.stormgamesstudios.stormstore",
     "description": "StormStore, tu tienda de juegos favorita.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/stormstore-android/main/stormstore.png",
     "downloadUrl": "https://github.com/acierto-incomodo/stormstore-android/releases/latest/download/StormStore.apk",
@@ -8,6 +9,7 @@
   },
   {
     "name": "Salto Perfecto",
+    "packageName": "com.stormgamesstudios.saltoperfecto",
     "description": "Un juego emocionante donde debes saltar perfectamente sobre los obstáculos.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.apk",
@@ -15,6 +17,7 @@
   },
   {
     "name": "CardinalAI MultiModel App",
+    "packageName": "com.stormgamesstudios.cardinalaidualmodel",
     "description": "CardinalAI MultiModel App es una aplicación de inteligencia artificial nuestra en la palma de tu mano.",
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-MultiModel-App.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-MultiModel-App.apk",
