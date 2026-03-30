@@ -5,7 +5,7 @@
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/stormstore-android/main/stormstore.png",
     "downloadUrl": "https://github.com/acierto-incomodo/stormstore-android/releases/latest/download/StormStore.apk",
     "version": "2.0.0",
-    "secret": "no"
+    "hiden": "no"
   },
   {
     "name": "Salto Perfecto",
@@ -13,7 +13,7 @@
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/SaltoPerfecto.apk",
     "version": "2.3",
-    "secret": "no"
+    "hiden": "no"
   },
   {
     "name": "GeoDash",
@@ -21,7 +21,7 @@
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/GeoDash.apk",
     "version": "1.0.0",
-    "secret": "yes"
+    "hiden": "yes"
   },
   {
     "name": "CardinalAI DualModel APP",
@@ -29,6 +29,6 @@
     "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-DualModel-APP.png",
     "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-DualModel-APP.apk",
     "version": "1.1.0",
-    "secret": "no"
+    "hiden": "no"
   }
 ]
