@@ -457,7 +457,7 @@ fun DownloadsScreen(context: Context) {
 
         if (downloadedFiles.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "No hay APKs descargados", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = "No hay instaladores descargados", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -575,6 +575,18 @@ fun AboutScreen() {
             Spacer(modifier = Modifier.height(48.dp))
             Text(text = "Desarrollado por:", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.secondary)
             Text(text = "StormGamesStudios", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            val context = LocalContext.current
+
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://stormstore.vercel.app"))
+                    context.startActivity(intent)
+                }
+            ) {
+                Icon(Icons.Default.Launch, contentDescription = "Abrir web")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Abrir web")
+            }
         }
     }
 }
