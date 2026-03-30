@@ -1,0 +1,1 @@
+puedes hacer que cuando se descarga una app en vez del circulo normal dando vueltas puedes hacer que sea con esto de material 3? y tambien en el circulo de carga de splash screen? pon este porfa: CircularWavyProgressIndicator

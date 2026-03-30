@@ -114,6 +114,10 @@ data class StoreApp(
     val version: String
 )
 
+object DownloadState {
+    val downloadingApps = mutableStateOf(mapOf<Long, String>())
+}
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var downloadReceiver: BroadcastReceiver
@@ -217,6 +221,11 @@ class MainActivity : ComponentActivity() {
                                 val file = File(Uri.parse(uriString).path ?: "")
                                 if (file.exists()) {
                                     installApk(context, file)
+
+                                    // 🔥 ELIMINAR SOLO ESTA DESCARGA
+                                    val currentMap = DownloadState.downloadingApps.value.toMutableMap()
+                                    currentMap.remove(id)
+                                    DownloadState.downloadingApps.value = currentMap
                                 }
                             }
                         }
@@ -357,7 +366,7 @@ fun StoreListScreen(context: Context) {
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         items(filteredApps) { app ->
-                            StoreAppCard(app) { 
+                            StoreAppCard(app) {
                                 if (isAppInstalledAndUpToDate(context, app.packageName, app.version)) {
                                     launchApp(context, app.packageName)
                                 } else {
@@ -416,12 +425,25 @@ fun StoreAppCard(app: StoreApp, onAction: () -> Unit) {
                 Text(text = "v${app.version}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 Text(text = app.description, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            IconButton(onClick = onAction) {
-                Icon(
-                    imageVector = if (isUpToDate) Icons.Default.PlayArrow else Icons.Default.Download,
-                    contentDescription = if (isUpToDate) "Abrir" else "Descargar",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+
+            val downloadingApps by DownloadState.downloadingApps
+            val isDownloading = downloadingApps.values.any { it == app.downloadUrl.substringAfterLast("/") }
+
+            IconButton(
+                onClick = { if (!isDownloading) onAction() }
+            ) {
+                if (isDownloading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isUpToDate) Icons.Default.PlayArrow else Icons.Default.Download,
+                        contentDescription = if (isUpToDate) "Abrir" else "Descargar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
@@ -631,8 +653,14 @@ fun descargarAppYIcono(context: Context, apkUrl: String, imageUrl: String) {
         setDestinationInExternalFilesDir(context, null, fileName)
         setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
     }
-    dm.enqueue(apkRequest)
 
+    val downloadId = dm.enqueue(apkRequest)
+
+    // 🔥 GUARDAMOS LA DESCARGA
+    DownloadState.downloadingApps.value =
+        DownloadState.downloadingApps.value + (downloadId to fileName)
+
+    // ICONO
     if (imageUrl.isNotEmpty()) {
         val iconName = fileName.replace(".apk", ".png")
         val iconFile = File(context.getExternalFilesDir(null), iconName)
