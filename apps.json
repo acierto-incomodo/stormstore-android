@@ -16,12 +16,12 @@
     "version": "3.0.2"
   },
   {
-    "name": "CardinalAI MultiModel App",
+    "name": "CardinalAI",
     "packageName": "com.stormgamesstudios.cardinalaidualmodel",
-    "description": "CardinalAI MultiModel App es una aplicación de inteligencia artificial nuestra en la palma de tu mano.",
-    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-MultiModel-App.png",
-    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI-MultiModel-App.apk",
-    "version": "1.1.0"
+    "description": "CardinalAI es una aplicación de inteligencia artificial nuestra en la palma de tu mano.",
+    "imageUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI.png",
+    "downloadUrl": "https://raw.githubusercontent.com/acierto-incomodo/android-apps/main/CardinalAI.apk",
+    "version": "2.0.0"
   },
   {
     "name": "Clase WEB",
