@@ -609,6 +609,21 @@ fun AboutScreen() {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Abrir web")
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(text = "Version de escritorio:", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = "Windows 10/11", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://stormstore.vercel.app"))
+                    context.startActivity(intent)
+                }
+            ) {
+                Icon(Icons.Default.Download, contentDescription = "Version de escritorio")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Descargar")
+            }
         }
     }
 }
