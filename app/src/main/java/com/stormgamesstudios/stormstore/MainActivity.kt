@@ -601,7 +601,7 @@ fun AboutScreen() {
 
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://stormstore.vercel.app"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://stormgamesstudios.vercel.app"))
                     context.startActivity(intent)
                 }
             ) {
